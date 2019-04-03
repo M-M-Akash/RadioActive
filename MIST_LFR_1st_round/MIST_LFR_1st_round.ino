@@ -239,9 +239,6 @@ void sensorAnalysis() {
     }
     else if (countSensor == 0) ;
 
-    //else if (countSensor == 5 && sensorData[0] == -3 && sensorData[6] == 3) {// Line color Changed
-      //whiteLine = !whiteLine;
-    //}
     else if(countSensor > 0 && (sensorData[0] == 0 || sensorData[6] == 0)){// forward line
       pidControl = 1;
       fullBlack = 0;
