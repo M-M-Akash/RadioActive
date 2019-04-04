@@ -15,6 +15,7 @@ float dError = 0;
 
 //Sensor segment
 float distance[3] = {20,20,20};
+int maxDistance = 40;
 int sl = 0;
 
 int sensorData[7] = {0, 0, 0, 0, 0, 0, 0};
@@ -138,7 +139,9 @@ void loop() {
 
   if(lineEnd == 1) findWay();
 
-  else if(cave == 1) escapeCave();
+  //---------------------------- partition
+
+  if(cave == 1) escapeCave();
 
   else if(object == 1) avoidObject();
 
@@ -203,19 +206,20 @@ void readIR() {
 //host: 'readSensor()'
 void readSonar(){
   if(sl>=3) sl=0;
-  distance[sl] = getDistance(trig[sl], echo[sl]);
+  distance[sl] = getDistance(trig[sl], echo[sl], maxDistance);
   sl++;
 }
 //getting Distance
 //host: 'readSonar()'
-float getDistance(int T, int E){
+float getDistance(int T, int E, int mxD){
   digitalWrite(T, 0);
   delayMicroseconds(2);
   digitalWrite(T, 1);
   delayMicroseconds(10);
   digitalWrite(T, 0);
 
-  long int duration = pulseIn(E, 1, 4000);
+  long int timeOut = mxD*29*2;
+  long int duration = pulseIn(E, 1, timeOut);
   float cm = duration / 29 / 2;
 
   return cm;
@@ -328,8 +332,8 @@ void setStop() {
 }
 void setLeft() {
   //90deg turn at 0.5125sec at speed 100
-  leftSpeed = -100;
-  rightSpeed = 100;
+  leftSpeed = -105;
+  rightSpeed = 105;
 }
 void setRight() {
   leftSpeed = 100;
@@ -346,9 +350,9 @@ void findWay(){
   setStop();
   driveMotor();
 
-  for(int i=0; i<3; i++) distance[i] = getDistance(trig[i], echo[i]);
+  //for(int i=0; i<3; i++) distance[i] = getDistance(trig[i], echo[i], maxDistance);
   
-  if(distance[1] > 0 && (distance[0] > 0 || distance[2] > 0)) cave = 1;
+  if(distance[1] > 0 || distance[0] > 0 || distance[2] > 0) cave = 1;
   
   else if (countSensor <= 5 && sensorData[0] == -3 && sensorData[6] == 3){ // Line color Changed   
     whiteLine = !whiteLine; 
@@ -358,13 +362,16 @@ void findWay(){
   else if (countSensor == 0 || rule == 1) rightTurn = 1;
   //lineEnd = 0;
 }
+
 //These function moves thourgh cave
 //host: 'loop()'
 void escapeCave(){
+  maxDistance = 80;
+  
   setForward();
   driveMotor();
   while(1){
-    distance[1] = getDistance(trig[1], echo[1]);
+    distance[1] = getDistance(trig[1], echo[1], maxDistance);
     if(distance[1] <= 7){
       setStop();
       driveMotor();
@@ -374,7 +381,7 @@ void escapeCave(){
   if(rule == 0) setRight();
   else setLeft();
   driveMotor();
-  delay(460);
+  delay(450);
   
   setStop();
   driveMotor();
@@ -387,10 +394,10 @@ void escapeCave(){
   bool ref = 0;
   float refFront = 0;
   while(1){
-    if(rule == 0) side = getDistance(trig[0], echo[0]);
-    else side = getDistance(trig[2], echo[2]);
+    if(rule == 0) side = getDistance(trig[0], echo[0], maxDistance);
+    else side = getDistance(trig[2], echo[2], maxDistance);
     
-    distance[1] = getDistance(trig[1], echo[1]);
+    distance[1] = getDistance(trig[1], echo[1], maxDistance);
     
     if(side == 0 && ref == 0){
       refFront = distance[1];
@@ -408,7 +415,7 @@ void escapeCave(){
   if(rule == 0) setLeft();
   else setRight();
   driveMotor();
-  delay(460);
+  delay(450);
   
   setStop();
   driveMotor();
@@ -419,25 +426,31 @@ void escapeCave(){
     
     if(distance[0] == 0 || distance[2] == 0){
       setForward();
-      if(countSensor > 0 ) break;
-    }    
-    else if(distance[0] - distance[2] == 0) setForward();
-    else if(distance[0] - distance[2] < 0) setRight();
-    else if(distance[0] - distance[2] > 0) setLeft();
+      if(countSensor > 0 ){
+        setStop();
+        driveMotor();
+        break;
+      }
+    }  
+    else if(distance[0] != 0 && distance[2] != 0){
+      if(distance[0] - distance[2] == 0) setForward();
+      else if(distance[0] - distance[2] < 0) setRight();
+      else if(distance[0] - distance[2] > 0) setLeft();
+    }
     driveMotor();
     delay(1);
     
     setForward();
     driveMotor();
-    delay(100);
-  }
-  
+    delay(1);
+  } 
   cave = 0; 
+  maxDistance = 40;
 }
 //These function avoids the obstacle
 //host: 'loop()'
 void avoidObject(){
- 
+ //away from the object===========================
   if(rule == 0) setLeft();
   else setRight();
   driveMotor();  
@@ -453,20 +466,20 @@ void avoidObject(){
   
   float side = 20;
   while(side > 0){
-    if(rule == 0) side = getDistance(trig[2], echo[2]);
-    else  side  = getDistance(trig[0], echo[0]);
+    if(rule == 0) side = getDistance(trig[2], echo[2], maxDistance);
+    else  side  = getDistance(trig[0], echo[0], maxDistance);
     if(side == 0){
-      delay(800);
+      delay(700);
       setStop();
     }
     driveMotor();
     delay(100);
   }
- 
+ //moving aside of the object=========================
   if(rule == 0) setRight();
   else setLeft();
   driveMotor();  
-  delay(450);
+  delay(420);
   
   setStop();
   driveMotor();
@@ -474,24 +487,24 @@ void avoidObject(){
   
   setForward();
   driveMotor();
-  delay(500);
+  delay(1000);
   
   side = 20;
   while(side > 0){
-    if(rule == 0) side = getDistance(trig[2], echo[2]);
-    else  side  = getDistance(trig[0], echo[0]);
+    if(rule == 0) side = getDistance(trig[2], echo[2], maxDistance);
+    else  side  = getDistance(trig[0], echo[0], maxDistance);
     if(side == 0){
-      delay(800);
+      delay(700);
       setStop();
     }
     driveMotor();
     delay(100);
   }
-  
+ //searching line======================================== 
   if(rule == 0) setRight();
   else setLeft();
   driveMotor();  
-  delay(450);
+  delay(420);
   
   setStop();
   driveMotor();
